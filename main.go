@@ -26,7 +26,7 @@ func buildLunchMap() {
 		for event := range outputChan {
 			date := time.Date(event.GetStart().Year(), event.GetStart().Month(), event.GetStart().Day(), 0, 0, 0, 0, event.GetStart().Location())
 			lunches[date] = event.GetSummary()
-			//fmt.Printf("%v:%s\n", event.GetStart(), event.GetSummary())
+			fmt.Printf("%v:%s\n", event.GetStart(), event.GetSummary())
 		}
 	}()
 	parser.Wait()
