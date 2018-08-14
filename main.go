@@ -36,7 +36,8 @@ func DispatchIntents(request alexa.Request) alexa.Response {
 	var response alexa.Response
 	switch request.Body.Intent.Name {
 	case "today":
-		response = handleToday(request)
+		response = alexa.NewSimpleResponse("today", "meatballs")
+		//handleToday(request)
 	case alexa.HelpIntent:
 		return alexa.NewSimpleResponse("help", "ask for today's lunch")
 	}
