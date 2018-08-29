@@ -4,23 +4,12 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
 	ics "github.com/PuloV/ics-golang"
 )
-
-var lunches map[time.Time]string
-
-func getLunch(date time.Time) string {
-	if lunches[date] == "" {
-		buildLunchMap()
-	}
-	if lunches[date] == "" {
-		return "nothing"
-	}
-	return lunches[date]
-}
 
 func getFromDb(date time.Time, mealType string, details bool) (string, error) {
 	m, err := Get(date, mealType, details)
@@ -87,11 +76,43 @@ func GetWeek() string {
 	}
 	out := ""
 	for i := startDay.Weekday(); i <= 5; i++ {
-		out = out + fmt.Sprintf("%s has %s,", startDay.Weekday(), getLunch(startDay))
+		day, err := getFromDb(startDay, "lunch", false)
+		if err != nil {
+			day = "trouble"
+		}
+		out = out + fmt.Sprintf("%s has %s,", startDay.Weekday(), day)
+
 		startDay = startDay.AddDate(0, 0, 1)
 	}
 	return out
 
+}
+
+// GetDay gets the whole week worth of lunches
+func GetDay(day string) string {
+	fmt.Printf("getting the day: %v\n", day)
+	d := weekDayMap[strings.ToLower(day)]
+	if d == 0 {
+		return fmt.Sprintf("Please specify a weekday, there is no lunch on %s", day)
+	}
+
+	dateWanted := time.Date(time.Now().Year(), time.Now().Month(), time.Now().Day(), 0, 0, 0, 0, time.Now().Location())
+	cDay := dateWanted.Weekday()
+	// if the day requested has already passed this week, get it for next week
+	if d < cDay {
+		// the day requested has already passed this week, get it for next week
+		dateWanted.AddDate(0, 0, 7-(int(d)-int(cDay)))
+		fmt.Printf("setting the date to %s", dateWanted.String())
+	} else {
+		// the day requests is still this week, so just add the number of days needed
+		dateWanted.AddDate(0, 0, int(cDay)-int(d))
+		fmt.Printf("setting the date to %s", dateWanted.String())
+	}
+	result, err := getFromDb(dateWanted, "lunch", true)
+	if err != nil {
+		return "Sorry there was an error retrieving the lunch schedule"
+	}
+	return fmt.Sprintf("On %s the menu is %s", day, result)
 }
 
 func getCalendar() string {
@@ -124,33 +145,6 @@ func getCalendar() string {
 	fmt.Println("exiting calendar http get")
 	//fmt.Printf("output: %s\n", out)
 	return out
-}
-
-func buildLunchMap() {
-
-	if lunches == nil {
-		lunches = make(map[time.Time]string)
-	}
-
-	parser := ics.New()
-	ics.FilePath = "/tmp/"
-	pChan := parser.GetInputChan()
-	pChan <- "https://www.parkwayschools.net/site/handlers/icalfeed.ashx?MIID=4134"
-	outputChan := parser.GetOutputChan()
-	go func() {
-		for event := range outputChan {
-			date := time.Date(event.GetStart().Year(), event.GetStart().Month(), event.GetStart().Day(), 0, 0, 0, 0, time.Now().Location())
-			lunches[date] = event.GetSummary()
-			//fmt.Printf("%v:%s\n", date, event.GetSummary())
-		}
-	}()
-	parser.Wait()
-	errs, _ := parser.GetErrors()
-	for _, err := range errs {
-		fmt.Println("parseError:", err.Error())
-	}
-	today := time.Date(time.Now().Year(), time.Now().Month(), time.Now().Day(), 0, 0, 0, 0, time.Now().Location())
-	fmt.Printf("build map %s\n", lunches[today])
 }
 
 func buildMeals(url string, mealType string) ([]*Meal, error) {
