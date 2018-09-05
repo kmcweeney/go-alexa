@@ -21,6 +21,15 @@ var weekDayMap = map[string]time.Weekday{
 	"friday":    time.Friday,
 }
 
+//AppContext contains pointers to the implementations
+type AppContext struct {
+	cal     Calendar
+	backend Backend
+}
+
+var ac AppContext
+
+//DispatchIntents answer some alexa questions
 func DispatchIntents(request alexa.Request) alexa.Response {
 	var response alexa.Response
 	if request.Body.Type == "LaunchRequest" {
@@ -42,32 +51,6 @@ func DispatchIntents(request alexa.Request) alexa.Response {
 		day := request.Body.Intent.Slots["day"]
 		fmt.Printf("Looking up lunch for %s\n", day)
 		response = alexa.NewSimpleResponse("day", GetDay(day.Value))
-	// case "updateDB":
-	// 	fmt.Println("handeling case updateDB")
-	// 	meals, err := buildMeals("https://www.parkwayschools.net/site/handlers/icalfeed.ashx?MIID=4134", "lunch")
-	// 	if err != nil {
-	// 		fmt.Println("Error building meal map from ical: ", err)
-	// 		response = alexa.NewSimpleResponse("error", "couldn't build db")
-	// 	}
-	// 	err = UpdateDB(meals)
-	// 	if err != nil {
-	// 		fmt.Println("Couldn't load data:", err)
-	// 		response = alexa.NewSimpleResponse("error", "couldn't build db")
-	// 	}
-	// 	response = alexa.NewSimpleResponse("worked", "db updated")
-	// case "firstInsert":
-	// 	fmt.Println("handeling case firstInsert intent")
-	// 	meals, err := buildMeals("https://www.parkwayschools.net/site/handlers/icalfeed.ashx?MIID=4134", "lunch")
-	// 	if err != nil {
-	// 		fmt.Println("Error building meal map from ical: ", err)
-	// 		response = alexa.NewSimpleResponse("error", "couldn't build db")
-	// 	}
-	// 	err = firstInsert(meals)
-	// 	if err != nil {
-	// 		fmt.Println("Couldn't load data:", err)
-	// 		response = alexa.NewSimpleResponse("error", "couldn't build db")
-	// 	}
-	// 	response = alexa.NewSimpleResponse("worked", "db updated")
 	case alexa.FallbackIntent:
 		fmt.Println("handeling case fallback")
 		response = alexa.NewSimpleResponse("today", GetTodaysLunch())
@@ -79,11 +62,22 @@ func DispatchIntents(request alexa.Request) alexa.Response {
 	return response
 }
 
+//Handler the handler
 func Handler(request alexa.Request) (alexa.Response, error) {
 	return DispatchIntents(request), nil
 }
 
 func main() {
+	cals := make(map[string]string)
+	cals["lunch"] = "https://www.parkwayschools.net/site/handlers/icalfeed.ashx?MIID=4134"
 
+	be := dynamo{}
+	cal := parkway{
+		cals: cals,
+	}
+	ac = AppContext{
+		backend: be,
+		cal:     cal,
+	}
 	lambda.Start(Handler)
 }

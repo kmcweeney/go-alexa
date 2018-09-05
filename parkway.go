@@ -1,9 +1,8 @@
 package main
 
 import (
+	"errors"
 	"fmt"
-	"io/ioutil"
-	"net/http"
 	"strings"
 	"sync"
 	"time"
@@ -11,26 +10,35 @@ import (
 	ics "github.com/PuloV/ics-golang"
 )
 
+//Calendar interface for getting meals out of the ical
+type Calendar interface {
+	Retrieve(mealType string) ([]*Meal, error)
+}
+
+type parkway struct {
+	cals map[string]string
+}
+
 func getFromDb(date time.Time, mealType string, details bool) (string, error) {
-	m, err := Get(date, mealType, details)
+	m, err := ac.backend.Get(date, mealType, details)
 	if err != nil {
 		fmt.Println("Problem with DB: ", err)
 		return "", err
 	}
 	if m.MainDish == "" {
 		fmt.Println("Updating the db from the calendar")
-		meals, err := buildMeals("https://www.parkwayschools.net/site/handlers/icalfeed.ashx?MIID=4134", mealType)
+		meals, err := ac.cal.Retrieve(mealType)
 		if err != nil {
 			fmt.Println("Error building meal map from ical: ", err)
 			return "", err
 		}
-		err = UpdateDB(meals)
+		err = ac.backend.Update(meals)
 		if err != nil {
 			fmt.Println("Couldn't load data:", err)
 			return "", err
 		}
 	}
-	m, err = Get(date, mealType, details)
+	m, err = ac.backend.Get(date, mealType, details)
 	if err != nil {
 		fmt.Println("Problem with DB: ", err)
 		return "", err
@@ -55,6 +63,7 @@ func GetTodaysLunch() string {
 	return fmt.Sprintf("Today the menu is %s", result)
 }
 
+// GetTomorrow gets tomorrow
 func GetTomorrow() string {
 	today := time.Date(time.Now().Year(), time.Now().Month(), time.Now().Day(), 0, 0, 0, 0, time.Now().Location())
 	tomorrow := today.AddDate(0, 0, 1)
@@ -120,39 +129,12 @@ func GetDay(day string) string {
 	return fmt.Sprintf("On %s the menu is %s", day, result)
 }
 
-func getCalendar() string {
-	fmt.Println("getting the calendar by http get")
-	timeout := time.Duration(5 * time.Second)
-	client := http.Client{Timeout: timeout}
-	out := ""
-	req, err := http.NewRequest("GET", "https://www.parkwayschools.net/site/handlers/icalfeed.ashx?MIID=4134", nil)
-	if err != nil {
-		fmt.Printf("error creating request %v\n", err)
+// Retrieve will retrieve the calendar
+func (pw parkway) Retrieve(mealType string) ([]*Meal, error) {
+	url := pw.cals[mealType]
+	if url == "" {
+		return []*Meal{}, errors.New("mealtype doesn't have a matching url")
 	}
-	req.Header.Add("Content-Type", "text/calendar")
-	req.Header.Add("accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8")
-	resp, err := client.Do(req)
-	if err != nil {
-		fmt.Printf("error getting the file %v\n", err)
-	}
-	fmt.Println("Response code", resp.StatusCode)
-	fmt.Println("Response length", resp.ContentLength)
-
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusOK {
-		bodyBts, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			fmt.Printf("error getting body bytes %v\n", err)
-		}
-		out = string(bodyBts)
-	}
-	fmt.Println("exiting calendar http get")
-	//fmt.Printf("output: %s\n", out)
-	return out
-}
-
-func buildMeals(url string, mealType string) ([]*Meal, error) {
 	var out []*Meal
 	parser := ics.New()
 	ics.FilePath = "/tmp/"
