@@ -14,7 +14,6 @@ func TestGetToday(t *testing.T) {
 }
 
 func TestGetWeek(t *testing.T) {
-	buildLunchMap()
 	out := GetWeek()
 	if out != "" {
 		t.Errorf("got %s", out)
@@ -41,6 +40,12 @@ func TestLoadMeals(t *testing.T) {
 }
 
 func TestStuff(t *testing.T) {
-	today := time.Date(time.Now().Year(), time.Now().Month(), time.Now().Day(), 0, 0, 0, 0, time.Now().Location())
-	t.Errorf("%s", today.Format(tFormat))
+	dateWanted := time.Date(time.Now().Year(), time.Now().Month(), time.Now().Day(), 0, 0, 0, 0, time.Now().Location())
+	cDay := dateWanted.Weekday()
+	d := 5
+	adder := (d - int(cDay))
+	fmt.Printf("Adding %d days\n", adder)
+	dateWanted = dateWanted.AddDate(0, 0, (int(d) - int(cDay)))
+	//fmt.Printf("setting the date to %s", dateWanted.String())
+	t.Errorf("jfkdljfldk")
 }

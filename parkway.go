@@ -18,6 +18,7 @@ func getFromDb(date time.Time, mealType string, details bool) (string, error) {
 		return "", err
 	}
 	if m.MainDish == "" {
+		fmt.Println("Updating the db from the calendar")
 		meals, err := buildMeals("https://www.parkwayschools.net/site/handlers/icalfeed.ashx?MIID=4134", mealType)
 		if err != nil {
 			fmt.Println("Error building meal map from ical: ", err)
@@ -92,20 +93,24 @@ func GetWeek() string {
 func GetDay(day string) string {
 	fmt.Printf("getting the day: %v\n", day)
 	d := weekDayMap[strings.ToLower(day)]
-	if d == 0 {
+	fmt.Printf("getting day number %d\n", d)
+	if d == 0 || d == 6 {
 		return fmt.Sprintf("Please specify a weekday, there is no lunch on %s", day)
 	}
 
 	dateWanted := time.Date(time.Now().Year(), time.Now().Month(), time.Now().Day(), 0, 0, 0, 0, time.Now().Location())
 	cDay := dateWanted.Weekday()
+	fmt.Printf("Today is %s\n", cDay)
 	// if the day requested has already passed this week, get it for next week
 	if d < cDay {
 		// the day requested has already passed this week, get it for next week
-		dateWanted.AddDate(0, 0, 7-(int(d)-int(cDay)))
+		fmt.Printf("Adding %d days to %v", 7-(int(cDay)-int(d)), dateWanted)
+		dateWanted = dateWanted.AddDate(0, 0, 7-(int(cDay)-int(d)))
 		fmt.Printf("setting the date to %s", dateWanted.String())
 	} else {
 		// the day requests is still this week, so just add the number of days needed
-		dateWanted.AddDate(0, 0, int(cDay)-int(d))
+		fmt.Printf("Adding %d days to %v", int(d)-int(cDay), dateWanted)
+		dateWanted = dateWanted.AddDate(0, 0, int(d)-int(cDay))
 		fmt.Printf("setting the date to %s", dateWanted.String())
 	}
 	result, err := getFromDb(dateWanted, "lunch", true)

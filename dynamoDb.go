@@ -49,6 +49,7 @@ func Get(date time.Time, mealType string, details bool) (Meal, error) {
 }
 
 func UpdateDB(meals []*Meal) error {
+	fmt.Println("Updating DB")
 	sess, err := session.NewSession(&aws.Config{Region: aws.String(region)})
 	if err != nil {
 		fmt.Println("Error creating AWS session: ", err)
