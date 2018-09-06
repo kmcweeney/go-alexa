@@ -11,14 +11,15 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 )
+
 //Backend interface for getting meals
-type Backend interface{
+type Backend interface {
 	Get(date time.Time, mealType string, details bool) (Meal, error)
 	Update(meals []*Meal) error
 }
 
 //Dynamo implementation of the backend
-type dynamo struct {}
+type dynamo struct{}
 
 //Meal is the representation of a meal
 type Meal struct {
@@ -28,6 +29,7 @@ type Meal struct {
 	MainDish string    `json:"mainDish"`
 	Sides    string    `json:"sides"`
 }
+
 // Get returns the meal with the given type on the date
 // details are returned if the details input is true
 func (d dynamo) Get(date time.Time, mealType string, details bool) (Meal, error) {
@@ -57,7 +59,6 @@ func (d dynamo) Get(date time.Time, mealType string, details bool) (Meal, error)
 	}
 	return m, nil
 }
-
 
 // Update the db with the input slice of Meals
 func (d dynamo) Update(meals []*Meal) error {
