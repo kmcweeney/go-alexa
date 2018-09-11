@@ -67,10 +67,9 @@ func Handler(request alexa.Request) (alexa.Response, error) {
 	return DispatchIntents(request), nil
 }
 
-func main() {
+func setup() {
 	cals := make(map[string]string)
 	cals["lunch"] = "https://www.parkwayschools.net/site/handlers/icalfeed.ashx?MIID=4134"
-
 	be := dynamo{}
 	cal := parkway{
 		cals: cals,
@@ -79,5 +78,9 @@ func main() {
 		backend: be,
 		cal:     cal,
 	}
+}
+
+func main() {
+	setup()
 	lambda.Start(Handler)
 }
